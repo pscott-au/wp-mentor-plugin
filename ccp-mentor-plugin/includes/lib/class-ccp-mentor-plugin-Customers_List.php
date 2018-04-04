@@ -6,6 +6,8 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 	require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 class Customers_List extends WP_List_Table {
+
+    public $status_filter = 1;
 	/** Class constructor */
 	public function __construct() {
 		parent::__construct( [
@@ -22,9 +24,9 @@ class Customers_List extends WP_List_Table {
 	 *
 	 * @return mixed
 	 */
-	public static function get_customers( $per_page = 5, $page_number = 1 ) {
+	public static function get_customers( $per_page = 5, $page_number = 1, $status_filter ) {
 		global $wpdb;
-		$sql = "SELECT * FROM {$wpdb->prefix}mentee_eois";
+		$sql = "SELECT * FROM {$wpdb->prefix}mentee_eois WHERE status = " . $status_filter . ' ';
 		if ( ! empty( $_REQUEST['orderby'] ) ) {
 			$sql .= ' ORDER BY ' . esc_sql( $_REQUEST['orderby'] );
 			$sql .= ! empty( $_REQUEST['order'] ) ? ' ' . esc_sql( $_REQUEST['order'] ) : ' ASC';
@@ -34,6 +36,23 @@ class Customers_List extends WP_List_Table {
 		$result = $wpdb->get_results( $sql, 'ARRAY_A' );
 		return $result;
 	}
+
+
+
+
+	/**
+	 * Delete a customer record.
+	 *
+	 * @param int $id customer ID
+	 */
+	public static function inc_customer_status( $id ) {
+		global $wpdb;
+        $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}mentee_eois SET status = status + 1 WHERE id = %d", $id) );
+    }
+
+
+
+
 	/**
 	 * Delete a customer record.
 	 *
@@ -41,11 +60,19 @@ class Customers_List extends WP_List_Table {
 	 */
 	public static function delete_customer( $id ) {
 		global $wpdb;
-		$wpdb->delete(
-			"{$wpdb->prefix}mentee_eois",
-			[ 'id' => $id ],
-			[ '%d' ]
-		);
+        $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->prefix}mentee_eois SET status = status - 1 WHERE id = %d", $id) );        
+      /**
+       * $wpdb->update( "{$wpdb->prefix}mentee_eois",
+       *                ['status' => -1 ], 
+       *                [ 'id' => $id ], 
+       *                [ '%d' ],
+       *                [ '%d' ] );
+		* $wpdb->delete(
+		*	"{$wpdb->prefix}mentee_eois",
+		*	[ 'id' => $id ],
+		*	[ '%d' ]
+		* );
+        **/
 	}
 	/**
 	 * Returns the count of records in the database.
@@ -103,10 +130,16 @@ class Customers_List extends WP_List_Table {
 		$delete_nonce = wp_create_nonce( 'sp_delete_customer' );
         // $approve_nonce =  wp_create_nonce( 'sp_approve_customer' );
 		$title = '<strong>' . $item['name'] . '</strong>';
+
 		$actions = [
-			 'delete' => sprintf( '<a href="?page=%s&action=%s&customer=%s&_wpnonce=%s">Delete</a>', esc_attr( $_REQUEST['page'] ), 'delete', absint( $item['id'] ), $delete_nonce ),
-             'edit' => sprintf( '<a href="?page=%s&action=%s&customer=%s&_wpnonce=%s">Approve</a>', esc_attr( $_REQUEST['page'] ), 'approve', absint( $item['id'] ), $delete_nonce )
+			 'delete' => sprintf( '<a href="?page=%s&action=%s&customer=%s&_wpnonce=%s">Deny</a>', esc_attr( $_REQUEST['page'] ), 'delete', absint( $item['id'] ), $delete_nonce )
 		];
+        if ( $this->status_filter < 1 )
+        {
+            $actions['edit'] = sprintf( '<a href="?page=%s&action=%s&customer=%s&_wpnonce=%s">Approve</a>', esc_attr( $_REQUEST['page'] ), 
+                   'approve', absint( $item['id'] ), $delete_nonce );
+            // array_push($actions,  );
+        }
 		return $title . $this->row_actions( $actions );
 	}
 	/**
@@ -163,10 +196,33 @@ class Customers_List extends WP_List_Table {
 			'total_items' => $total_items, //WE have to calculate the total number of items
 			'per_page'    => $per_page //WE have to determine how many items to show on a page
 		] );
-		$this->items = self::get_customers( $per_page, $current_page );
+		$this->items = self::get_customers( $per_page, $current_page, $this->status_filter );
 	}
 	public function process_bulk_action() {
 		//Detect when a bulk action is being triggered...
+
+		if ( 'approve' === $this->current_action() ) {
+			// In our file that handles the request, verify the nonce.
+			$nonce = esc_attr( $_REQUEST['_wpnonce'] );
+			if ( ! wp_verify_nonce( $nonce, 'sp_delete_customer' ) ) {
+				die( 'Go get a life script kiddies' );
+			}
+			else {
+
+				self::inc_customer_status( absint( $_GET['customer'] ) );
+		                // esc_url_raw() is used to prevent converting ampersand in url to "#038;"
+		                // add_query_arg() return the current url
+                        // error_log( esc_url_raw(add_query_arg()) );
+		                // wp_redirect( esc_url_raw(add_query_arg()) );
+                        //return '/wp-admin/admin.php?page=wp_list_table_class&action=delete&customer=4&_wpnonce=0dcf9c0beb';
+                        return;
+				exit;
+			}
+		}
+
+
+
+
 		if ( 'delete' === $this->current_action() ) {
 			// In our file that handles the request, verify the nonce.
 			$nonce = esc_attr( $_REQUEST['_wpnonce'] );

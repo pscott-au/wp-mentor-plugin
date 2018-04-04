@@ -36,7 +36,8 @@ class CCP_Mentor_Plugin_Settings {
 	 */
 	public $settings = array();
 
-	public $customers_obj;
+	public $customers_obj0;
+	public $customers_obj1;
 
 	public function __construct ( $parent ) {
 		$this->parent = $parent;
@@ -71,29 +72,34 @@ class CCP_Mentor_Plugin_Settings {
 	public function add_menu_item () {
 		
 		$page = add_options_page( __( 'CCP Plugin Settings', 'ccp-mentor-plugin' ) , __( 'Mentor Program', 'ccp-mentor-plugin' ) , 'manage_options' , $this->parent->_token . '_settings' ,  array( $this, 'settings_page' ) );
-		// add_action( 'admin_print_styles-' . $page, array( $this, 'settings_assets' ) );
+		 add_action( 'admin_print_styles-' . $page, array( $this, 'settings_assets' ) );
 
 		// new customers stuff
 		 // $this->customers_obj = new Customers_List();
 
 		$hook = add_menu_page(
-			'Mentees List - Approved',
-			'Mentees List - Approved',
+			'New Mentees',
+			'New Mentees',
 			'manage_options',
 			'wp_list_table_class',
-			[ $this, 'plugin_settings_page' ]
+			[ $this, 'plugin_settings_page' ],
+			'dashicons-businessman'
 		);
 
 		$hook2 = add_menu_page(
-			'Mentees List - Pending',
-			'Mentees List - Pending',
+			'Approved Mentees',
+			'Approved Mentees',
 			'manage_options',
 			'wp_list_table_class2',
-			[ $this, 'plugin_settings_page' ]
+			[ $this, 'plugin_settings_page1' ],
+			'dashicons-id-alt'
 		);
+
+		//  dashicons-cart  dashicons-groups  dashicons-welcome-learn-more dashicons-awards
+
 		
-		add_action( "load-$hook", [ $this, 'screen_option' ] );
-		add_action( "load-$hook2", [ $this, 'screen_option' ] );
+		add_action( "load-$hook",  [ $this, 'screen_option' ] );
+		add_action( "load-$hook2", [ $this, 'screen_option2' ] );
 		add_filter( 'set-screen-option', [ __CLASS__, 'set_screen' ], 10, 3 );
 
 		
@@ -111,15 +117,39 @@ class CCP_Mentor_Plugin_Settings {
 			'option'  => 'customers_per_page'
 		];
 		add_screen_option( $option, $args );
-		$this->customers_obj = new Customers_List();
+		$this->customers_obj0 = new Customers_List();
+		$this->customers_obj0->status_filter = 0;
 	}
+	public function screen_option2() {
+		$option = 'per_page';
+		$args   = [
+			'label'   => 'Customers',
+			'default' => 5,
+			'option'  => 'customers_per_page'
+		];
+		add_screen_option( $option, $args );
+		
+		$this->customers_obj1 = new Customers_List();
+		$this->customers_obj1->status_filter = 1;
+		
+	}
+
 
 /** FROM PS **/
 	public function plugin_settings_page() {
 		$ret = '<div class="wrap"><h2>Mentees</h2><div id="poststuff"><div id="post-body" class="metabox-holder columns-2"><div id="post-body-content">' 
 		     . '<div class="meta-box-sortables ui-sortable"><form method="post">' . "\n"
-			 . $this->customers_obj->prepare_items() . "\n" 
-			 . $this->customers_obj->display() 
+			 . $this->customers_obj0->prepare_items() . "\n" 
+			 . $this->customers_obj0->display() 
+			 . '</form></div></div></div><br class="clear"></div></div>';
+	    return $ret;
+	}
+
+	public function plugin_settings_page1() {
+		$ret = '<div class="wrap"><h2>Mentees</h2><div id="poststuff"><div id="post-body" class="metabox-holder columns-2"><div id="post-body-content">' 
+		     . '<div class="meta-box-sortables ui-sortable"><form method="post">' . "\n"
+			 . $this->customers_obj1->prepare_items() . "\n" 
+			 . $this->customers_obj1->display() 
 			 . '</form></div></div></div><br class="clear"></div></div>';
 	    return $ret;
 	}
